@@ -1,0 +1,132 @@
+:root {
+  --sky: #070b1f;            /* deep night indigo behind the scene */
+  --glass: rgba(14, 20, 48, 0.78);
+  --glass-edge: rgba(140, 160, 255, 0.18);
+  --ink: #e9ecff;            /* starlight */
+  --ink-dim: #9aa3cf;
+  --signal: #ffb547;         /* amber: actions and the selected orbit */
+  --alert: #ff6b57;
+  --ok: #7cf2b4;
+  --radius-panel: 14px;
+  --radius-ctl: 8px;
+  --font: "Saira", "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--sky); color: var(--ink); font-family: var(--font); font-size: 14px; }
+canvas#renderCanvas { position: fixed; inset: 0; width: 100%; height: 100%; outline: none; display: block; }
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* ---------- brand ---------- */
+.brand { position: fixed; top: 18px; right: 24px; text-align: right; pointer-events: none; }
+.brand h1 { margin: 0; font-size: 34px; font-weight: 300; font-stretch: 75%; letter-spacing: 0.06em; line-height: 1; }
+.brand p { margin: 4px 0 0; color: var(--ink-dim); font-size: 12px; }
+
+/* ---------- panels ---------- */
+.dock, .telemetry, .timebar {
+  position: fixed; background: var(--glass); border: 1px solid var(--glass-edge);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.dock { top: 16px; left: 16px; bottom: 76px; width: 330px; border-radius: var(--radius-panel); display: flex; flex-direction: column; overflow: hidden; }
+.tabs { display: flex; border-bottom: 1px solid var(--glass-edge); }
+.tab { flex: 1; background: none; border: 0; padding: 12px 0 10px; color: var(--ink-dim); font-weight: 500; font-stretch: 85%; letter-spacing: 0.02em; border-bottom: 2px solid transparent; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--signal); }
+.pane { padding: 14px 16px 18px; overflow-y: auto; flex: 1; scrollbar-width: thin; }
+
+.row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+.grow { flex: 1; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; color: var(--ink-dim); font-size: 12px; }
+.field .unit { position: absolute; opacity: 0; } /* unit is announced to screen readers, shown via placeholder style below */
+.field { position: relative; }
+.field input, .field select { min-width: 0; width: 100%;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--glass-edge); border-radius: var(--radius-ctl);
+  padding: 8px 10px; color: var(--ink); font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.field select option { background: #141a3c; }
+
+button.primary { background: var(--signal); color: #1a1205; border: 0; border-radius: var(--radius-ctl); padding: 9px 14px; font-weight: 600; white-space: nowrap; }
+button.primary:hover { filter: brightness(1.08); }
+button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+button.wide { width: 100%; margin-top: 10px; }
+
+.hint { color: var(--ink-dim); font-size: 12.5px; line-height: 1.5; margin: 0 0 10px; }
+.hint strong { color: var(--ink); font-weight: 500; }
+.sub { font-size: 15px; font-weight: 500; font-stretch: 85%; margin: 22px 0 8px; }
+
+/* sliders */
+.editor { border-left: 2px solid var(--signal); padding-left: 12px; margin: 4px 0 6px; }
+.editor[data-disabled] { opacity: 0.45; pointer-events: none; border-left-color: var(--glass-edge); }
+.slider { display: grid; grid-template-columns: 1fr auto; align-items: baseline; margin-bottom: 8px; }
+.slider label { font-size: 12.5px; color: var(--ink-dim); }
+.slider output { font-variant-numeric: tabular-nums; font-size: 13px; }
+.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--signal); margin: 4px 0 0; }
+
+/* orbit list */
+.orbit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.orbit-list li { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--radius-ctl); cursor: pointer; }
+.orbit-list li:hover { background: rgba(255, 255, 255, 0.05); }
+.orbit-list li[aria-current="true"] { background: rgba(255, 181, 71, 0.12); }
+.orbit-list .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+.orbit-list .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orbit-list .meta { color: var(--ink-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.orbit-list .x { background: none; border: 0; color: var(--ink-dim); padding: 2px 6px; border-radius: 6px; }
+.orbit-list .x:hover { color: var(--alert); }
+
+.dv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.dv-grid.two { grid-template-columns: 1fr 1fr; }
+
+.preview, .readout { font-variant-numeric: tabular-nums; }
+.preview { background: rgba(255, 255, 255, 0.04); border-radius: var(--radius-ctl); padding: 10px 12px; font-size: 13px; line-height: 1.6; min-height: 20px; }
+.preview .warn { color: var(--alert); }
+.preview .good { color: var(--ok); }
+
+.readout { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
+.readout dt { color: var(--ink-dim); }
+.readout dd { margin: 0; text-align: right; }
+#launchReadout { margin: 4px 0 4px; }
+
+/* ---------- telemetry ---------- */
+.telemetry { top: 96px; right: 16px; width: 270px; border-radius: var(--radius-panel); padding: 14px 16px; }
+.telemetry h2 { margin: 0 0 10px; font-size: 18px; font-weight: 500; font-stretch: 85%; display: flex; align-items: center; gap: 8px; }
+.telemetry h2 .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+.telemetry dd.big { font-size: 18px; font-weight: 500; white-space: nowrap; }
+
+/* ---------- time bar ---------- */
+.timebar { left: 16px; right: 16px; bottom: 16px; height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 10px; padding: 0 10px; }
+.timebar button { background: none; border: 1px solid transparent; border-radius: var(--radius-ctl); padding: 6px 10px; color: var(--ink-dim); }
+.timebar button:hover { color: var(--ink); border-color: var(--glass-edge); }
+.timebar button.icon { width: 38px; color: var(--ink); font-size: 12px; letter-spacing: -1px; }
+.warp { display: flex; background: rgba(255,255,255,0.05); border-radius: var(--radius-ctl); }
+.warp button { font-variant-numeric: tabular-nums; }
+.warp button.on, #toggleAxes.on { color: #1a1205; background: var(--signal); }
+.clock { font-variant-numeric: tabular-nums; color: var(--ink); margin-left: 6px; font-size: 15px; letter-spacing: 0.02em; }
+.spacer { flex: 1; }
+
+/* ---------- satellite tag ---------- */
+.sat-tag { position: fixed; transform: translate(14px, -50%); pointer-events: none; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: rgba(7, 11, 31, 0.75); border-left: 2px solid var(--signal); white-space: nowrap; }
+
+/* ---------- toast & dialog ---------- */
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sky); padding: 9px 16px; border-radius: 999px; font-weight: 500; }
+dialog { max-width: 560px; background: #10163a; color: var(--ink); border: 1px solid var(--glass-edge); border-radius: var(--radius-panel); padding: 22px 26px; line-height: 1.55; }
+dialog::backdrop { background: rgba(3, 5, 15, 0.6); }
+dialog h2 { margin-top: 0; font-weight: 500; font-stretch: 85%; }
+dialog li { margin-bottom: 6px; }
+kbd { border: 1px solid var(--glass-edge); border-radius: 4px; padding: 0 5px; font-family: inherit; font-size: 12px; }
+.keys { color: var(--ink-dim); }
+
+/* ---------- small screens ---------- */
+@media (max-width: 900px) {
+  .brand { display: none; }
+  .telemetry { top: auto; bottom: 72px; right: 8px; left: auto; width: 210px; padding: 10px 12px; font-size: 12px; }
+  .telemetry .readout { font-size: 12px; }
+  .telemetry .readout dt:nth-of-type(n+6), .telemetry .readout dd:nth-of-type(n+6) { display: none; }
+  .telemetry dd.big { font-size: 15px; }
+  .dock { width: calc(100% - 16px); left: 8px; top: 8px; bottom: auto; max-height: 40vh; }
+  .timebar { left: 8px; right: 8px; bottom: 8px; overflow-x: auto; }
+  .timebar #help, .timebar #reset, .timebar #share { display: none; }
+  .clock { font-size: 13px; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

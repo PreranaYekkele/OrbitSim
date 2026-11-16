@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrbitSim — interactive orbital mechanics</title>
+  <meta name="description" content="Design orbits from Keplerian elements, fly burns, plan Hohmann transfers and launch from real spaceports — in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@75..100,300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="renderCanvas" touch-action="none" aria-label="3D view of Earth and orbits"></canvas>
+  <div id="satTag" class="sat-tag" hidden></div>
+
+  <header class="brand">
+    <h1>OrbitSim</h1>
+    <p>Two-body orbital mechanics around Earth</p>
+  </header>
+
+  <!-- Left dock: design / manoeuvre / launch -->
+  <aside class="dock" aria-label="Mission controls">
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab" aria-selected="true" data-tab="design">Design</button>
+      <button role="tab" class="tab" aria-selected="false" data-tab="burn">Manoeuvre</button>
+      <button role="tab" class="tab" aria-selected="false" data-tab="launch">Launch</button>
+    </nav>
+
+    <!-- DESIGN -->
+    <section class="pane" id="pane-design" role="tabpanel">
+      <div class="row">
+        <label class="field grow">Start from
+          <select id="preset">
+            <option value="iss">ISS (420 km, 51.6°)</option>
+            <option value="hubble">Hubble (535 km, 28.5°)</option>
+            <option value="sso">Sun-synchronous (700 km, 98.2°)</option>
+            <option value="gps">GPS (20,180 km, 55°)</option>
+            <option value="geo">Geostationary (35,786 km)</option>
+            <option value="molniya">Molniya (highly elliptical)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field grow">Name
+          <input id="orbitName" type="text" maxlength="24" placeholder="e.g. My first orbit">
+        </label>
+        <button id="addOrbit" class="primary">Add orbit</button>
+      </div>
+
+      <div id="editor" class="editor">
+        <p class="hint" id="editorHint">Editing <strong id="editingName">—</strong>. Sliders update it live.</p>
+        <div class="slider" data-key="peri"><label for="peri">Perigee altitude</label><output></output>
+          <input id="peri" type="range" min="160" max="40000" step="10"></div>
+        <div class="slider" data-key="apo"><label for="apo">Apogee altitude</label><output></output>
+          <input id="apo" type="range" min="160" max="60000" step="10"></div>
+        <div class="slider" data-key="inc"><label for="inc">Inclination i</label><output></output>
+          <input id="inc" type="range" min="0" max="180" step="0.1"></div>
+        <div class="slider" data-key="raan"><label for="raan">Ascending node Ω</label><output></output>
+          <input id="raan" type="range" min="0" max="360" step="1"></div>
+        <div class="slider" data-key="argp"><label for="argp">Argument of perigee ω</label><output></output>
+          <input id="argp" type="range" min="0" max="360" step="1"></div>
+        <div class="slider" data-key="nu"><label for="nu">True anomaly ν</label><output></output>
+          <input id="nu" type="range" min="0" max="360" step="1"></div>
+      </div>
+
+      <h2 class="sub">Orbits</h2>
+      <ul id="orbitList" class="orbit-list"></ul>
+      <p id="emptyList" class="hint">No orbits yet. Pick a starting point and press “Add orbit”.</p>
+    </section>
+
+    <!-- MANOEUVRE -->
+    <section class="pane" id="pane-burn" role="tabpanel" hidden>
+      <p class="hint">Burns are applied instantly to <strong class="selName">the selected orbit</strong> at its current position.</p>
+      <div class="dv-grid">
+        <label class="field">Prograde (m/s)<input id="dvPro" type="number" value="100" step="10"></label>
+        <label class="field">Normal (m/s)<input id="dvNor" type="number" value="0" step="10"></label>
+        <label class="field">Radial (m/s)<input id="dvRad" type="number" value="0" step="10"></label>
+      </div>
+      <div class="preview" id="burnPreview"></div>
+      <button id="burnNow" class="primary wide">Fire burn</button>
+
+      <h2 class="sub">Hohmann transfer</h2>
+      <p class="hint">Two burns that move a near-circular orbit to a new altitude using the least fuel.</p>
+      <div class="row">
+        <label class="field grow">Target altitude (km)
+          <input id="hohTarget" type="number" value="35786" step="100" min="200"></label>
+      </div>
+      <div class="preview" id="hohPreview"></div>
+      <button id="hohGo" class="primary wide">Start transfer</button>
+    </section>
+
+    <!-- LAUNCH -->
+    <section class="pane" id="pane-launch" role="tabpanel" hidden>
+      <div class="row">
+        <label class="field grow">Spaceport
+          <select id="site">
+            <option value="ksc">Kennedy Space Center, USA</option>
+            <option value="shar">Satish Dhawan (Sriharikota), India</option>
+            <option value="kourou">Guiana Space Centre, Kourou</option>
+            <option value="baikonur">Baikonur Cosmodrome, Kazakhstan</option>
+            <option value="vandenberg">Vandenberg SFB, USA</option>
+          </select>
+        </label>
+      </div>
+      <div class="dv-grid two">
+        <label class="field">Target altitude (km)<input id="lAlt" type="number" value="500" min="200" step="50"></label>
+        <label class="field">Target inclination (°)<input id="lInc" type="number" value="30" min="0" max="180" step="0.5"></label>
+      </div>
+      <dl class="readout" id="launchReadout"></dl>
+      <button id="launchGo" class="primary wide">Launch</button>
+    </section>
+  </aside>
+
+  <!-- Right: telemetry of selected orbit -->
+  <aside class="telemetry" aria-live="polite">
+    <h2 id="telName">No orbit selected</h2>
+    <dl id="telData" class="readout"></dl>
+  </aside>
+
+  <!-- Bottom: time controls -->
+  <footer class="timebar">
+    <button id="playPause" class="icon" aria-label="Pause simulation" title="Pause (Space)">❚❚</button>
+    <div class="warp" role="group" aria-label="Time warp">
+      <button data-warp="1">1×</button><button data-warp="10">10×</button><button data-warp="100" class="on">100×</button><button data-warp="1000">1000×</button><button data-warp="10000">10k×</button>
+    </div>
+    <span id="clock" class="clock">T+ 0 d 00:00:00</span>
+    <span class="spacer"></span>
+    <button id="toggleAxes" title="Show axes and equator (A)">Axes</button>
+    <button id="share" title="Copy a link that recreates these orbits">Copy link</button>
+    <button id="reset" title="Remove all orbits">Reset</button>
+    <button id="help" title="How it works (H)">Help</button>
+  </footer>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <dialog id="helpDialog">
+    <h2>How OrbitSim works</h2>
+    <p>Every orbit here is a <em>Keplerian ellipse</em> around a point-mass Earth (μ = 398,600 km³/s²). Six numbers pin it down:</p>
+    <ul>
+      <li><strong>Perigee / apogee altitude</strong> — the lowest and highest points above the surface. Together they set the size (semi-major axis <i>a</i>) and shape (eccentricity <i>e</i>).</li>
+      <li><strong>Inclination i</strong> — tilt of the orbit against the equator. Above 90° the orbit runs backwards (retrograde).</li>
+      <li><strong>Ascending node Ω</strong> — where the orbit crosses the equator heading north.</li>
+      <li><strong>Argument of perigee ω</strong> — where the lowest point sits inside the orbital plane.</li>
+      <li><strong>True anomaly ν</strong> — where the satellite is right now.</li>
+    </ul>
+    <p>Satellites move by solving Kepler’s equation each frame, so they speed up near perigee exactly like real spacecraft. Burns convert the orbit to position and velocity, add the Δv, and convert back.</p>
+    <p class="keys">Shortcuts: <kbd>Space</kbd> pause, <kbd>1</kbd>–<kbd>5</kbd> time warp, <kbd>A</kbd> axes, <kbd>H</kbd> help</p>
+    <form method="dialog"><button class="primary">Close</button></form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/babylonjs@7.54.3/babylon.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
